@@ -4,9 +4,11 @@ from OpenGL.GL import *
 
 from stacktracer import TextPane
 
-def main():
-    width, height = 800, 600
 
+def main():
+    width, height = 1200, 860
+
+    # Try to create the game window and check for errors on glfw.init() and glfw.create_window()
     if not glfw.init():
         sys.exit(1)
 
@@ -17,23 +19,24 @@ def main():
 
     glfw.make_context_current(window)
 
-    # Instantiate the pane to fill the entire window for this test
-    # (x, y, width, height)
+    # Instantiate the pane to fill the entire window
     terminal = TextPane(0, 0, width, height)
 
     last_time = glfw.get_time()
 
     while not glfw.window_should_close(window):
-        # Calculate delta time for the typewriter effect
+        # NOTE: Need to understand better how delta time works and how it will affect other functionalities of the game.
         current_time = glfw.get_time()
         dt = current_time - last_time
         last_time = current_time
 
-        # Clear screen with the pane's background color
+        # NOTE: Here I also use the * Python operator to unpack the individual RGB
+        # color values into the glClearColor red, green, blue arguments.
         glClearColor(*terminal.bg_color, 1.0)
+        # Clear the screen by drawing pixels of the defined color to the entire screen.
         glClear(GL_COLOR_BUFFER_BIT)
 
-        # Setup standard 2D projection
+        # Define standard 2D projection
         glViewport(0, 0, width, height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -42,7 +45,7 @@ def main():
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-        # RUN PANE LOGIC
+        # Run the internal pane object logic
         terminal.update(dt)
         terminal.render()
         terminal.draw_borders()
@@ -51,6 +54,7 @@ def main():
         glfw.poll_events()
 
     glfw.terminate()
+
 
 if __name__ == "__main__":
     main()
