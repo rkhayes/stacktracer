@@ -2,21 +2,23 @@ import glfw
 from OpenGL.GL import *
 from OpenGL.GLU import gluOrtho2D
 import linear_classifier_minigame
+import decision_tree_minigame
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 800, 600
 
 # GAME STATES
 STATE_INTRO = 0
-STATE_PLAYING = 1
-STATE_END = 2
+STATE_PLAYING_LINEAR = 1
+STATE_PLAYING_BST = 2
+STATE_END = 3
 
 current_state = STATE_INTRO
 current_stage = 0
 TOTAL_STAGES = 3
 text_pane = None
+intro_page = 0
 
 # PROLOGUE DIALOGUE
-intro_page = 0
 INTRO_DIALOGUE = [
     [
         "> MAN: THIS MACHINE ISN'T WORKING PROPERLY.",
@@ -60,17 +62,16 @@ MINI_FONT = {
     '8': ["111","101","111","101","111"], '9': ["111","101","111","001","111"],
     ':': ["000","010","000","010","000"], '|': ["010","010","010","010","010"],
     '[': ["110","100","100","100","110"], ']': ["011","001","001","001","011"],
-    '?': ["011","101","010","000","010"], "'": ["010","010","000","000","000"]
+    '?': ["011","101","010","000","010"], "'": ["010","010","000","000","000"],
+    ',': ["000","000","000","010","100"]
 }
 
 class Pane:
-    """Base class for in-game window subdivisions (panels)."""
     def __init__(self, x, y, w, h, bg_color=(0.05, 0.05, 0.05)):
         self.x, self.y, self.w, self.h = x, y, w, h
         self.bg_color = bg_color
 
 class TextPane(Pane):
-    """Extends base class Pane for text rendering."""
     def __init__(self, x, y, w, h, bg_color=(0.02, 0.05, 0.02)):
         super().__init__(x, y, w, h, bg_color)
         self.lines = []
@@ -78,7 +79,6 @@ class TextPane(Pane):
         self.pixel_size = 2      
         self.char_spacing = 2
         self.line_spacing = 4    
-
         self.visible_chars = 0
         self.timer = 0.0
         self.speed = 0.015
@@ -157,7 +157,6 @@ def draw_panel_border(width, height, padding=2):
 def key_callback(window, key, scancode, action, mods):
     global current_state, current_stage, intro_page, text_pane
     
-    # PROLOGUE CONTROLS
     if current_state == STATE_INTRO:
         if key == glfw.KEY_ENTER and action == glfw.PRESS:
             intro_page += 1
@@ -165,8 +164,7 @@ def key_callback(window, key, scancode, action, mods):
                 text_pane.clear()
                 text_pane.write_new_sequence(INTRO_DIALOGUE[intro_page])
             else:
-                # Terminou o prologo, comeca o minigame
-                current_state = STATE_PLAYING
+                current_state = STATE_PLAYING_LINEAR
                 linear_classifier_minigame.load_stage(current_stage)
                 text_pane.clear()
                 text_pane.write_new_sequence([
@@ -175,13 +173,11 @@ def key_callback(window, key, scancode, action, mods):
                     "> LINEAR CLASSIFIER OFFLINE.",
                     "> OPERATOR: REALIGN THE WEIGHTS."
                 ])
-        return # Bloqueia outros inputs durante a intro
+        return 
 
-    # CONTROLES
-    if current_state == STATE_PLAYING:
+    if current_state == STATE_PLAYING_LINEAR:
         if linear_classifier_minigame.is_cleared and key == glfw.KEY_ENTER and action == glfw.PRESS:
             current_stage += 1
-            
             if current_stage < TOTAL_STAGES:
                 linear_classifier_minigame.load_stage(current_stage)
                 text_pane.clear()
@@ -191,17 +187,29 @@ def key_callback(window, key, scancode, action, mods):
                     "> OPERATOR: REALIGN THE WEIGHTS."
                 ])
             else:
-                current_state = STATE_END
+                current_state = STATE_PLAYING_BST
                 linear_classifier_minigame.feedback_msg = ""
+                decision_tree_minigame.init_game(text_pane)
                 text_pane.clear()
                 text_pane.write_new_sequence([
-                    "> ALL SECTORS RESTORED.",
                     "> LINEAR CLASSIFIER ONLINE.",
-                    "> SYSTEM NOMINAL."
+                    "> BOOTING BST CALIBRATION PROTOCOL...",
+                    "> SELECT NODES 1-7. SPACE TO SUBMIT."
                 ])
             return
-
         linear_classifier_minigame.process_input(key, action, glfw)
+
+    elif current_state == STATE_PLAYING_BST:
+        if decision_tree_minigame.verificar_arvore_completa() and key == glfw.KEY_ENTER and action == glfw.PRESS:
+            current_state = STATE_END
+            text_pane.clear()
+            text_pane.write_new_sequence([
+                "> ALL SECTORS RESTORED.",
+                "> SYSTEM NOMINAL.",
+                "> GOODBYE, OPERATOR."
+            ])
+            return
+        decision_tree_minigame.process_input(key, action, glfw)
 
 def main():
     global text_pane
@@ -215,7 +223,6 @@ def main():
     glfw.make_context_current(window)
     glfw.set_key_callback(window, key_callback)
 
-    # START PROLOGUE DIALOG
     text_pane = TextPane(0, 0, WINDOW_WIDTH, 300)
     text_pane.write_new_sequence(INTRO_DIALOGUE[0])
     
@@ -233,19 +240,20 @@ def main():
         top_height = int(fb_height * 0.70)
         bottom_height = fb_height - top_height
 
-        # TOP PANEL RENDERED ONLY WHEN INTRO ENDED
-        if current_state != STATE_INTRO:
+        if current_state == STATE_PLAYING_LINEAR:
             glViewport(0, bottom_height, fb_width, top_height)
             glMatrixMode(GL_PROJECTION)
             glLoadIdentity()
             gluOrtho2D(0, fb_width, 0, top_height)
             glMatrixMode(GL_MODELVIEW)
             glLoadIdentity()
-
             draw_panel_border(fb_width, top_height)
             linear_classifier_minigame.render(fb_width, top_height)
+            
+        elif current_state == STATE_PLAYING_BST:
+            glViewport(0, bottom_height, fb_width, top_height)
+            decision_tree_minigame.render(fb_width, top_height)
 
-        # BOTTOM PANEL ALWAYS VISIBLE
         glViewport(0, 0, fb_width, bottom_height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -254,14 +262,16 @@ def main():
         glLoadIdentity()
 
         draw_panel_border(fb_width, bottom_height)
+        text_pane.w, text_pane.h = fb_width, bottom_height
         
-        text_pane.w = fb_width
-        text_pane.h = bottom_height
-        
-        # Só exibe MSE e DE se o jogo estiver rolando
-        if current_state == STATE_PLAYING:
-            metrics = linear_classifier_minigame.get_metrics_string()
-            text_pane.set_metrics(metrics)
+        if current_state == STATE_PLAYING_LINEAR:
+            text_pane.set_metrics(linear_classifier_minigame.get_metrics_string())
+        elif current_state == STATE_PLAYING_BST:
+            if not decision_tree_minigame.verificar_arvore_completa():
+                no_at = decision_tree_minigame.nos[decision_tree_minigame.no_ativo_idx]
+                text_pane.set_metrics(f"> TARGET: {no_at['valor']} | X: {no_at['x']:.2f} | Y: {no_at['y']:.2f}")
+            else:
+                text_pane.set_metrics("")
         else:
             text_pane.set_metrics("")
 
