@@ -1,11 +1,11 @@
 import glfw
 from OpenGL.GL import *
 from OpenGL.GLU import gluOrtho2D
-import minigame1
+import linear_classifier_minigame
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 800, 600
 
-# Estados do Jogo
+# GAME STATES
 STATE_INTRO = 0
 STATE_PLAYING = 1
 STATE_END = 2
@@ -13,9 +13,9 @@ STATE_END = 2
 current_state = STATE_INTRO
 current_stage = 0
 TOTAL_STAGES = 3
-text_pane = None 
+text_pane = None
 
-# Paginação do Prólogo
+# PROLOGUE DIALOGUE
 intro_page = 0
 INTRO_DIALOGUE = [
     [
@@ -64,11 +64,13 @@ MINI_FONT = {
 }
 
 class Pane:
+    """Base class for in-game window subdivisions (panels)."""
     def __init__(self, x, y, w, h, bg_color=(0.05, 0.05, 0.05)):
         self.x, self.y, self.w, self.h = x, y, w, h
         self.bg_color = bg_color
 
 class TextPane(Pane):
+    """Extends base class Pane for text rendering."""
     def __init__(self, x, y, w, h, bg_color=(0.02, 0.05, 0.02)):
         super().__init__(x, y, w, h, bg_color)
         self.lines = []
@@ -155,7 +157,7 @@ def draw_panel_border(width, height, padding=2):
 def key_callback(window, key, scancode, action, mods):
     global current_state, current_stage, intro_page, text_pane
     
-    # === CONTROLES DO PRÓLOGO NARRATIVO ===
+    # PROLOGUE CONTROLS
     if current_state == STATE_INTRO:
         if key == glfw.KEY_ENTER and action == glfw.PRESS:
             intro_page += 1
@@ -163,9 +165,9 @@ def key_callback(window, key, scancode, action, mods):
                 text_pane.clear()
                 text_pane.write_new_sequence(INTRO_DIALOGUE[intro_page])
             else:
-                # Terminou a intro, inicia o minigame
+                # Terminou o prologo, comeca o minigame
                 current_state = STATE_PLAYING
-                minigame1.load_stage(current_stage)
+                linear_classifier_minigame.load_stage(current_stage)
                 text_pane.clear()
                 text_pane.write_new_sequence([
                     "> INIT STACKTRACER OS...",
@@ -175,13 +177,13 @@ def key_callback(window, key, scancode, action, mods):
                 ])
         return # Bloqueia outros inputs durante a intro
 
-    # === CONTROLES DO JOGO PRINCIPAL ===
+    # CONTROLES
     if current_state == STATE_PLAYING:
-        if minigame1.is_cleared and key == glfw.KEY_ENTER and action == glfw.PRESS:
+        if linear_classifier_minigame.is_cleared and key == glfw.KEY_ENTER and action == glfw.PRESS:
             current_stage += 1
             
             if current_stage < TOTAL_STAGES:
-                minigame1.load_stage(current_stage)
+                linear_classifier_minigame.load_stage(current_stage)
                 text_pane.clear()
                 text_pane.write_new_sequence([
                     f"> LOADING MEMORY SECTOR 0{current_stage + 1}...",
@@ -190,7 +192,7 @@ def key_callback(window, key, scancode, action, mods):
                 ])
             else:
                 current_state = STATE_END
-                minigame1.feedback_msg = ""
+                linear_classifier_minigame.feedback_msg = ""
                 text_pane.clear()
                 text_pane.write_new_sequence([
                     "> ALL SECTORS RESTORED.",
@@ -199,7 +201,7 @@ def key_callback(window, key, scancode, action, mods):
                 ])
             return
 
-        minigame1.process_input(key, action, glfw)
+        linear_classifier_minigame.process_input(key, action, glfw)
 
 def main():
     global text_pane
@@ -213,7 +215,7 @@ def main():
     glfw.make_context_current(window)
     glfw.set_key_callback(window, key_callback)
 
-    # Inicia com o diálogo da intro
+    # START PROLOGUE DIALOG
     text_pane = TextPane(0, 0, WINDOW_WIDTH, 300)
     text_pane.write_new_sequence(INTRO_DIALOGUE[0])
     
@@ -231,9 +233,8 @@ def main():
         top_height = int(fb_height * 0.70)
         bottom_height = fb_height - top_height
 
-        # Só desenha a UI do topo se não estiver na tela de Intro
+        # TOP PANEL RENDERED ONLY WHEN INTRO ENDED
         if current_state != STATE_INTRO:
-            # TOP PANEL (70%)
             glViewport(0, bottom_height, fb_width, top_height)
             glMatrixMode(GL_PROJECTION)
             glLoadIdentity()
@@ -242,9 +243,9 @@ def main():
             glLoadIdentity()
 
             draw_panel_border(fb_width, top_height)
-            minigame1.render(fb_width, top_height)
+            linear_classifier_minigame.render(fb_width, top_height)
 
-        # BOTTOM PANEL (30%) Sempre visível
+        # BOTTOM PANEL ALWAYS VISIBLE
         glViewport(0, 0, fb_width, bottom_height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -257,9 +258,9 @@ def main():
         text_pane.w = fb_width
         text_pane.h = bottom_height
         
-        # Só exibe métricas matemáticas se o jogo estiver rolando
+        # Só exibe MSE e DE se o jogo estiver rolando
         if current_state == STATE_PLAYING:
-            metrics = minigame1.get_metrics_string()
+            metrics = linear_classifier_minigame.get_metrics_string()
             text_pane.set_metrics(metrics)
         else:
             text_pane.set_metrics("")
