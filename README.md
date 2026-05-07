@@ -1,8 +1,6 @@
 # STACKTRACER
 Stacktracer é um puzzle game educativo baseado em texto e gráficos 2D minimalistas, renderizado com PyOpenGL e GLFW. A estética do jogo emula monitores CRT monocromáticos (fósforo verde) de mainframes antigos.
 
----
-
 ## STACKTRACER // MINIGAME 01: Linear Classifier
 Regressão Linear: O objetivo é encontrar a melhor linha de ajuste para um conjunto de dados bidimensional. A reta obedece à equação fundamental $y = wx + b$, onde $w$ é o Peso (rotação/inclinação) e $b$ é o Viés (translação vertical).
 
@@ -53,6 +51,9 @@ A Unidade Unificada é o Pipeline de Feedback Visual. Integra os estados lógico
 ### Interface e Proporção
 - **Correção de Aspecto:** Como a janela é retangular (800x600) e o universo OpenGL é quadrado (-1 a 1), a Matriz de Projeção é ajustada via `glOrtho`. O sistema calcula a proporção da tela e expande as bordas do eixo X, garantindo que as formas geométricas mantenham proporções perfeitas.
 
+### Mecânica de Progressão (Auto-Targeting)
+A lógica de seleção manual foi substituída por um sistema de progressão automática de nós (Auto-Targeting) para reforçar a regra de inserção de uma Árvore Binária de Busca. O sistema gerencia uma sequência rigorosa de calibração baseada em valores (`30, 20, 40, 60, 80, 70`). Quando o jogador alinha um nó perfeitamente com seu alvo correspondente, a posição do nó é fixada na estrutura da árvore, e o sistema transfere o controle automaticamente para a próxima peça corrompida na memória.
+
 ### Modelagem
 #### SRO (Sistema de Referência do Objeto)
 Cada hexágono ou número é desenhado na coordenada (0,0), seu próprio centro geométrico. Isso permite aplicar transformações de escala e rotação local sem distorcer o resto da tela. O estado do sistema é preservado com `glPushMatrix()` e restaurado com `glPopMatrix()` após o desenho de cada peça.
@@ -61,6 +62,7 @@ Cada hexágono ou número é desenhado na coordenada (0,0), seu próprio centro 
 As coordenadas do SRU são utilizadas para o gerenciamento de posicionamento global e movimentação das peças pelo cenário, garantindo que a distância entre os nodos da árvore seja exata.
 
 ### Controles
-- **W / S:** Ajusta a Escala (Aumenta ou diminui a peça).
-- **Q / E:** Ajusta a Rotação (Gira a peça em torno de seu próprio eixo).
-- **Setas do Teclado:** Translação (Move as peças pelo cenário no SRU).
+- **Setas do Teclado (↑ ↓ ← →):** Translação (Move a peça ativa livremente pelo cenário no SRU).
+- **W / S:** Ajusta a Escala (Aumenta ou diminui a peça ativa).
+- **Q / E:** Ajusta a Rotação (Gira a peça ativa em torno de seu próprio eixo).
+- **SPACE:** Submeter Calibração (Valida a posição atual do nó ativo. Em caso de sucesso, aciona o travamento do eixo e o pulo automático para o próximo alvo).
