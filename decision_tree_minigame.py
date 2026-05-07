@@ -1,10 +1,11 @@
 """
 STACKTRACER // MINIGAME 00 - LOGIC TREES (BST) - V2 (7 NÓS)
-Fase 1 expandida com 7 nós, refatorada como módulo para integração no SO principal.
+Módulo refatorado com progressão automática de nós (Auto-Targeting).
 """
 
 from OpenGL.GL import *
 import math
+import glfw
 
 PHOSPHOR_GREEN = (0.2, 0.9, 0.2)
 
@@ -45,7 +46,17 @@ nos = [
     {"id": 7, "valor": 80, "x": 0.5, "y": -0.8, "escala": 1.0, "rotacao": 0.0, "alvo_x": 0.6, "alvo_y": -0.2, "pai": 3, "fixo": False},
 ]
 
-no_ativo_idx = 1
+# NOVO SISTEMA DE SEQUÊNCIA
+NODE_SEQUENCE = [30, 20, 40, 60, 80, 70]
+sequence_idx = 0
+
+def get_node_idx_by_value(val):
+    for i, n in enumerate(nos):
+        if n["valor"] == val:
+            return i
+    return 1
+
+no_ativo_idx = get_node_idx_by_value(NODE_SEQUENCE[sequence_idx])
 global_text_pane = None
 
 def init_game(main_text_pane):
@@ -126,19 +137,10 @@ def desenhar_numero(numero):
     glPopMatrix() 
 
 def process_input(key, action, glfw_module):
-    global no_ativo_idx, global_text_pane
+    global no_ativo_idx, global_text_pane, sequence_idx
     
     if action == glfw_module.PRESS or action == glfw_module.REPEAT:
-        if glfw_module.KEY_1 <= key <= glfw_module.KEY_7:
-            idx = key - glfw_module.KEY_1
-            if not nos[idx]["fixo"]:
-                no_ativo_idx = idx
-                global_text_pane.clear()
-                global_text_pane.write_new_sequence([f"> TARGET: NODE {nos[idx]['valor']}"])
-            else:
-                global_text_pane.clear()
-                global_text_pane.write_new_sequence([f"> NODE {nos[idx]['valor']} IS LOCKED."])
-
+        
         no_atual = nos[no_ativo_idx]
         
         if not no_atual["fixo"]:
@@ -158,10 +160,19 @@ def process_input(key, action, glfw_module):
                     no_atual["x"], no_atual["y"], no_atual["escala"], no_atual["rotacao"] = no_atual["alvo_x"], no_atual["alvo_y"], 1.0, 0.0
                     no_atual["fixo"] = True
                     global_text_pane.clear()
+                    
                     if verificar_arvore_completa():
                         global_text_pane.write_new_sequence([f"> NODE {no_atual['valor']} ALIGNED.", "> ALL LOGIC TREES RESTORED.", "> PRESS ENTER TO FINISH."])
                     else:
-                        global_text_pane.write_new_sequence([f"> NODE {no_atual['valor']} ALIGNED."])
+                        # PROGRESSÃO AUTOMÁTICA
+                        sequence_idx += 1
+                        if sequence_idx < len(NODE_SEQUENCE):
+                            next_val = NODE_SEQUENCE[sequence_idx]
+                            no_ativo_idx = get_node_idx_by_value(next_val)
+                            global_text_pane.write_new_sequence([
+                                f"> NODE {no_atual['valor']} ALIGNED.", 
+                                f"> AUTO-TARGETING NODE {next_val}..."
+                            ])
                 else:
                     global_text_pane.clear()
                     global_text_pane.write_new_sequence(["> CALIBRATION FAILED.", "> INVALID BST POSITION."])

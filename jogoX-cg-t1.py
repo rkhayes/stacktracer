@@ -194,7 +194,7 @@ def key_callback(window, key, scancode, action, mods):
                 text_pane.write_new_sequence([
                     "> LINEAR CLASSIFIER ONLINE.",
                     "> BOOTING BST CALIBRATION PROTOCOL...",
-                    "> SELECT NODES 1-7. SPACE TO SUBMIT."
+                    "> AUTO-TARGETING ENABLED. SPACE TO SUBMIT."
                 ])
             return
         linear_classifier_minigame.process_input(key, action, glfw)
